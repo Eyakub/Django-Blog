@@ -1,16 +1,17 @@
 from django.shortcuts import render
 from .models import Post
 from marketing.models import Signup
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
 
 # Create your views here.
 def index(request):
     featured = Post.objects.filter(featured=True)
-    latest = Post.objects.order_by('-timestamp') [0:3]
+    latest = Post.objects.order_by('-timestamp')[0:3]
 
     if request.method == "POST":
         email = request.POST['email']
-        new_signup = Signup() # creating the Signup class object
+        new_signup = Signup()   # creating the Signup class object
         new_signup.email = email
         new_signup.save()
 
@@ -22,7 +23,22 @@ def index(request):
 
 
 def blog(request):
-    return render(request, 'blog.html', {})
+    post_list = Post.objects.all()
+    paginator = Paginator(post_list, 2)
+    page_request_var = 'page'
+    page = request.Get.get(page_request_var)
+    try:
+        paginated_queryset = paginator.page(page)
+    except PageNotAnInteger:
+        paginated_queryset = paginator.page(1)
+    except EmptyPage:
+        paginated_queryset = paginator.page(paginator.num_pages)
+
+    context = {
+        'post_list': paginated_queryset,
+        'page_request_var': page_request_var
+    }
+    return render(request, 'blog.html', context)
 
 
 def post(request):
