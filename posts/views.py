@@ -2,6 +2,29 @@ from django.shortcuts import render
 from .models import Post
 from marketing.models import Signup
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.db.models import Count, Q
+
+
+def search(request):
+    queryset = Post.objects.all()
+    query = request.GET.get('q')
+    if query:
+        queryset = queryset.filter(
+            Q(title__icontains=query) |
+            Q(overview__icontains=query)
+        ).distinct()
+    context = {
+        'queryset': queryset
+    }
+    return render(request, 'search_result.html', context)
+
+
+def get_category_count():
+    queryset = Post \
+        .objects \
+        .values('categories__title') \
+        .annotate(Count('categories__title'))
+    return queryset
 
 
 # Create your views here.
@@ -11,7 +34,7 @@ def index(request):
 
     if request.method == "POST":
         email = request.POST['email']
-        new_signup = Signup()   # creating the Signup class object
+        new_signup = Signup()  # creating the Signup class object
         new_signup.email = email
         new_signup.save()
 
@@ -23,8 +46,10 @@ def index(request):
 
 
 def blog(request):
+    category_count = get_category_count()
+    most_recent = Post.objects.order_by('-timestamp')[0:3]
     post_list = Post.objects.all()
-    paginator = Paginator(post_list, 1)
+    paginator = Paginator(post_list, 2)  # list with per page
     page_request_var = 'page'
     page = request.GET.get(page_request_var)
     try:
@@ -36,10 +61,12 @@ def blog(request):
 
     context = {
         'queryset': paginated_queryset,
-        'page_request_var': page_request_var
+        'most_recent': most_recent,
+        'page_request_var': page_request_var,
+        'category_count': category_count
     }
     return render(request, 'blog.html', context)
 
 
-def post(request):
+def post(request, id):
     return render(request, 'post.html', {})
